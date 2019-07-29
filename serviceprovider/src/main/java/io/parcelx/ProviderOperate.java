@@ -9,6 +9,8 @@ import io.parcelx.utils.JsonConverterUtil;
 import java.time.Instant;
 
 /**
+ * 服务商基本操作调用
+ *
  * @author xinfeng
  * @version 1.0
  * @Description

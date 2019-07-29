@@ -11,15 +11,18 @@ import com.alibaba.fastjson.JSON;
 public class JsonConverterUtil {
 
     /**
-     * 将Java对象转换为Json字符串
+     * 将Java对象转换为Json字符串并输出
+     *
      * @param obj Java对象
      * @return 返回Json字符串
      * @date 2019/7/25 16:22
      */
-    public static String getJsonString(Object obj){
-        if(obj != null){
-            return JSON.toJSONString(obj);
+    public static void getJsonString(Object obj) {
+        if (obj != null) {
+            String jsonString = JSON.toJSONString(obj);
+            System.out.println(jsonString);
+        } else {
+            System.out.println("Object is null");
         }
-        return null;
     }
 }
