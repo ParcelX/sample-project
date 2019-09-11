@@ -1,14 +1,19 @@
 package io.parcelx;
 
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
+import io.parcelx.jsonrpc.ApiBatchResponse;
 import io.parcelx.jsonrpc.ApiException;
+import io.parcelx.jsonrpc.ApiRequest;
+import io.parcelx.jsonrpc.ApiResponse;
 import io.parcelx.open.api.sdk.v1.model.*;
 import io.parcelx.utils.Constants;
 import io.parcelx.open.api.sdk.v1.ECommerceApi;
 import io.parcelx.utils.JsonConverterUtil;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * 电商相关操作基本调用
@@ -20,19 +25,21 @@ import java.util.ArrayList;
  */
 public class OnlineStoreOperate {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ApiException {
         // 1.上传包裹
-        createParcel();
+        //createParcel();
         // 2.确认包裹上传 如果按在第一步上传时开始自动确认，则无需调用该方法
         //placeOrder();
         // 3.获取包裹面单
         //getLabel();
         // 4.获取追踪信息
-        //getLabel();
+        //getTracking();
         // 5.修复包裹异常数据
         //fixException();
         // 6.电商确认服务完成
         //confirmServiceComplete();
+        // 7.批量上传包裹
+        //createParcelList();
     }
 
     /**
@@ -47,9 +54,9 @@ public class OnlineStoreOperate {
             // 编号类型，默认是parcelNo
             parcelNoParam.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            parcelNoParam.setValue("PX2492922d2803000");
+            parcelNoParam.setValue("PX25dfa2500c03000");
             // 执行成功后无返回结果，不抛异常，即为正常执行
-            getProviderApi().confirmServiceComplete(parcelNoParam);
+            getECommerceApi().confirmServiceComplete(parcelNoParam);
         } catch (ApiException e) {
             e.printStackTrace();
         }
@@ -73,7 +80,7 @@ public class OnlineStoreOperate {
             // 支付公司
             fixParcelInfoParam.setPaymentCompanyName("alili");
             // 执行成功后无返回结果，不抛异常，即为正常执行
-            getProviderApi().fixException(parcelNoParam, fixParcelInfoParam);
+            getECommerceApi().fixException(parcelNoParam, fixParcelInfoParam);
         } catch (ApiException e) {
             e.printStackTrace();
         }
@@ -91,9 +98,9 @@ public class OnlineStoreOperate {
             // 编号类型，默认是parcelNo
             parcelNoParam.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            parcelNoParam.setValue("PX2492922d2803000");
+            parcelNoParam.setValue("PX25dfa2500c03000");
             // 返回结果
-            ParcelTrackingResult result = getProviderApi().getTracking(parcelNoParam);
+            ParcelTrackingResult result = getECommerceApi().getTracking(parcelNoParam);
             // 转换Json字符串输出
             JsonConverterUtil.getJsonString(result);
         } catch (ApiException e) {
@@ -115,7 +122,7 @@ public class OnlineStoreOperate {
             // 设置编号
             parcelNoParam.setValue("PX2492922d2803000");
             // 返回结果
-            ParcelLabelResult result = getProviderApi().getLabel(parcelNoParam);
+            ParcelLabelResult result = getECommerceApi().getLabel(parcelNoParam);
             // 转换Json字符串输出
             JsonConverterUtil.getJsonString(result);
         } catch (ApiException e) {
@@ -137,7 +144,7 @@ public class OnlineStoreOperate {
             // 设置编号
             parcelNoParam.setValue("PX2492922d2803000");
             // 执行成功后无返回结果，不抛异常，即为正常执行
-            getProviderApi().placeOrder(parcelNoParam);
+            getECommerceApi().placeOrder(parcelNoParam);
         } catch (ApiException e) {
             e.printStackTrace();
         }
@@ -151,9 +158,9 @@ public class OnlineStoreOperate {
     public static void createParcel() {
         try {
             // 封装一个包裹参数实体
-            CreateParcelParam createParcelParam = getCreateParcelParam();
+            CreateParcelParam createParcelParam = getCreateParcelParam("T20000000011");
             // 调用上传  true表示自动确定包裹即下单，false则不自动确认包裹，需手动确认下单
-            ParcelCreationResult result = getProviderApi().createParcel(createParcelParam, false);
+            ParcelCreationResult result = getECommerceApi().createParcel(createParcelParam, true);
             // 转换Json字符串输出
             JsonConverterUtil.getJsonString(result);
         } catch (ApiException e) {
@@ -161,13 +168,39 @@ public class OnlineStoreOperate {
         }
     }
 
+    public static void createParcelList() throws ApiException {
+        List<ApiRequest> apiRequestList = new ArrayList<ApiRequest>();
+        for (int i = 0; i < 10; i++) {
+            CreateParcelParam param = getCreateParcelParam("T2000000000" + i);
+            ApiRequest createParcel = new ApiRequest("createParcel", param, true);
+            apiRequestList.add(createParcel);
+        }
+        ApiBatchResponse apiBatchResponse = getECommerceApi().batch(apiRequestList);
+        List<ApiResponse> apiResponseList = apiBatchResponse.getApiResponseList();
+        for (ApiResponse response : apiResponseList) {
+            // 解析错误信息
+            if (response.hasError()) {
+                ApiResponse.Error error = response.getError();
+                System.out.println("错误码：" + error.getCode());
+                System.out.println("错误信息：" + error.getMessage());
+            } else {
+                // 没有错误，处理正常返回
+                CreateOrderResult result = response.getResult(CreateOrderResult.class);
+                System.out.println("圆通单号：" + result.getTrackingNo());
+                System.out.println("圆通三段码：" + result.getReferenceNo());
+                System.out.println("圆通订单号：" + result.getOnlineOrderNo());
+                System.out.println("ParcelX单号：" + result.getParcelNo());
+            }
+        }
+    }
+
     // 创建一个包裹上传的参数
-    private static CreateParcelParam getCreateParcelParam() {
+    private static CreateParcelParam getCreateParcelParam(String orderNo) {
         CreateParcelParam createParcelParam = new CreateParcelParam();
-        createParcelParam.setRouteCode("UBI.CN2AU.AUPOST");
-        createParcelParam.setOnlineOrderNo("order0005152976003");
-        createParcelParam.setFacility("230031");
-        createParcelParam.setLot("235231232");
+        createParcelParam.setRouteCode("fengshen_01");
+        createParcelParam.setOnlineOrderNo(orderNo);
+        createParcelParam.setFacility("2301031");
+        createParcelParam.setLot("1000000001");
         createParcelParam.setSkuNumber(2);
         createParcelParam.setVolume(new BigDecimal(0));
         createParcelParam.setGrossWeight(new BigDecimal(2.1));
@@ -183,13 +216,13 @@ public class OnlineStoreOperate {
         createParcelParam.setPaymentCompanyName("哎呀巴巴");
         createParcelParam.setPaymentCompanyCode("ayabb");
         createParcelParam.setPaymentOrderNo("ayabb2912783");
-        createParcelParam.setPaymentTime(Instant.now());
+        createParcelParam.setPaymentTime(new Date());
         createParcelParam.setPaymentAmount(new BigDecimal(10));
         createParcelParam.setSenderIdType("1");
         createParcelParam.setSenderIdNo("440501195305174406");
         createParcelParam.setSenderIdcardBack("https://www.leangoo.com/kanban/task/downloadFile/2744320/bbe0132a64eed9ab/454618");
         createParcelParam.setSenderIdcardFront("https://www.leangoo.com/kanban/task/downloadFile/2744320/bbe0132a64eed9ab/454618");
-        createParcelParam.setSenderCountryCode("AUD");
+        createParcelParam.setSenderCountryCode("CN");
         createParcelParam.setSenderPrimaryAdministrative("北京市");
         createParcelParam.setSenderSecondAdministrative("北京市");
         createParcelParam.setSenderAddress("朝阳区");
@@ -198,11 +231,12 @@ public class OnlineStoreOperate {
         createParcelParam.setSenderName("cxk");
         createParcelParam.setSenderPhone("28231231241");
         createParcelParam.setSenderEmail("2723923@ayabba.com");
+        createParcelParam.setRecipientCountryCode("CN");
         createParcelParam.setRecipientIdType("1");
         createParcelParam.setRecipientIdNo("41358965746685");
-        createParcelParam.setRecipientPrimaryAdministrative("beijing");
-        createParcelParam.setRecipientSecondAdministrative("beiing");
-        createParcelParam.setRecipientThirdAdministrative("beijing");
+        createParcelParam.setRecipientPrimaryAdministrative("北京市");
+        createParcelParam.setRecipientSecondAdministrative("北京市");
+        createParcelParam.setRecipientThirdAdministrative("朝阳区");
         createParcelParam.setRecipientAddress("1024号2048栋");
         createParcelParam.setRecipientStreetNum("4096");
         createParcelParam.setRecipientPostcode("3927123");
@@ -228,14 +262,14 @@ public class OnlineStoreOperate {
         createParcelParam.setBuyerIdNo("2478694584368");
         createParcelParam.setBuyerIdPicture("https://www.leangoo.com/kanban/task/downloadFile/2744320/bbe0132a64eed9ab/454618");
         createParcelParam.setBuyerIdPicture2("https://www.leangoo.com/kanban/task/downloadFile/2744320/bbe0132a64eed9ab/454618");
-        createParcelParam.setPredictPutTime(Instant.now());
+        createParcelParam.setPredictPutTime(new Date());
         createParcelParam.setNeedSignature(0);
         createParcelParam.setEbcName("ayababa");
         createParcelParam.setEbcCode("sku-10001");
         createParcelParam.setEbpName("晤曜");
         createParcelParam.setEbpCode("292215123");
         createParcelParam.setIsDangerous(false);
-        ArrayList<ParcelItem> items = new ArrayList<>();
+        ArrayList<ParcelItem> items = new ArrayList<ParcelItem>();
         ParcelItem parcelItemsParam = new ParcelItem();
         parcelItemsParam.setItemNo("I2237123521");
         parcelItemsParam.setHsCode("201907291141");
@@ -244,7 +278,7 @@ public class OnlineStoreOperate {
         parcelItemsParam.setProductName("可口可乐");
         parcelItemsParam.setNativeProductName("可口可乐");
         parcelItemsParam.setProductDescription("三瓶可口可乐");
-        parcelItemsParam.setProductUnit("瓶");
+        parcelItemsParam.setProductUnit("PCE");
         parcelItemsParam.setUrl("http://www.baidu.com/");
         parcelItemsParam.setOrigin("USA");
         parcelItemsParam.setSpecification("nostrud ullamco qui");
@@ -258,7 +292,38 @@ public class OnlineStoreOperate {
         return createParcelParam;
     }
 
-    private static ECommerceApi getProviderApi() {
+    private static ECommerceApi getECommerceApi() {
         return new ECommerceApi(Constants.url, Constants.apiKey, Constants.apiSecret);
+    }
+
+
+    /**
+     * 需要注意，自己创建一个返回结果类，继承ParcelCreationResult，增加物流单号和三段码字段
+     *
+     * @date 2019/8/20 16:24
+     */
+    static class CreateOrderResult extends ParcelCreationResult {
+
+        @JsonPropertyDescription("国际物流单号")
+        private String trackingNo;
+
+        @JsonPropertyDescription("圆通三段码")
+        private String referenceNo;
+
+        public String getTrackingNo() {
+            return trackingNo;
+        }
+
+        public void setTrackingNo(String trackingNo) {
+            this.trackingNo = trackingNo;
+        }
+
+        public String getReferenceNo() {
+            return referenceNo;
+        }
+
+        public void setReferenceNo(String referenceNo) {
+            this.referenceNo = referenceNo;
+        }
     }
 }

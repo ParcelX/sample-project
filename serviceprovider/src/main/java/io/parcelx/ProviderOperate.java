@@ -1,12 +1,20 @@
 package io.parcelx;
 
+import io.parcelx.jsonrpc.ApiBatchResponse;
 import io.parcelx.jsonrpc.ApiException;
+import io.parcelx.jsonrpc.ApiRequest;
+import io.parcelx.jsonrpc.ApiResponse;
 import io.parcelx.open.api.sdk.v1.ProviderApi;
 import io.parcelx.open.api.sdk.v1.model.*;
 import io.parcelx.utils.Constants;
 import io.parcelx.utils.JsonConverterUtil;
 
+import java.io.UnsupportedEncodingException;
+import java.text.ParseException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * 服务商基本操作调用
@@ -18,9 +26,9 @@ import java.time.Instant;
  */
 public class ProviderOperate {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ParseException, ApiException {
         // 1.批量查询包裹
-        queryParcelList();
+        //queryParcelList();
         // 2.根据包裹单号查询
         //getParcelInfo();
         // 3.查询面单信息
@@ -28,7 +36,7 @@ public class ProviderOperate {
         // 3.上报包裹编号
         //reportTrackingNumber();
         // 4.服务商对包裹进行称重
-        //reportWeight();
+        // reportWeight();
         // 5.服务商上报物流轨迹事件
         //reportTrackingEvent();
         // 6.上报服务完成
@@ -37,6 +45,8 @@ public class ProviderOperate {
         //reportException();
         // 8.上报面单信息
         //reportLabel();
+        // 9.批量上报物流记录
+        reportTrackingEventList();
     }
 
     /**
@@ -105,11 +115,11 @@ public class ProviderOperate {
             // 编号类型，默认是parcelNo
             param.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            param.setValue("PX244284668003000");
+            param.setValue("PX21d9333f0003000");
             // 查询结果
             ParcelLabelResult result = getProviderApi().getLabel(param);
             if (result != null) {
-                // 转换成json字符串并输出
+                // 转换成json字符串并输出?
                 JsonConverterUtil.getJsonString(result);
             }
         } catch (ApiException e) {
@@ -129,9 +139,9 @@ public class ProviderOperate {
             // 编号类型，默认是parcelNo
             param.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            param.setValue("PX244284668003000");
+            param.setValue("PX25dfa2500c03000");
             // 物流单号
-            String trackingNo = "T10000000001";
+            String trackingNo = "FS100000001";
             // 执行成功后无返回结果，不抛异常，即为正常执行
             getProviderApi().reportTrackingNumber(param, trackingNo);
         } catch (ApiException e) {
@@ -151,7 +161,7 @@ public class ProviderOperate {
             // 编号类型，默认是parcelNo
             param.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            param.setValue("PX244284668003000");
+            param.setValue("PX25dfa2500c03000");
             // 重量
             Double weight = 2D;
             // 执行成功后无返回结果，不抛异常，即为正常执行
@@ -174,23 +184,50 @@ public class ProviderOperate {
             // 编号类型，默认是parcelNo
             parcelNoParam.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            parcelNoParam.setValue("PX244284668003000");
+            parcelNoParam.setValue("PX25dfa2500c03000");
             // 创建物流轨迹事件参数
             TrackingEventParam eventParam = new TrackingEventParam();
             // 物流轨迹code
-            eventParam.setCode(TrackingCode.COLLECT);
+            eventParam.setCode(TrackingCode.DELIVERING);
             // 物流轨迹消息
-            eventParam.setMessage("已完成拣货操作");
+            eventParam.setMessage("快递小哥土行孙正在配送中，上海市宝山区长江南路1231号");
             // 物流轨迹地点
-            eventParam.setLocation("上海A港口");
+            eventParam.setLocation("上海市宝山区");
             // 物流轨迹备注
-            eventParam.setRemark("备注信息");
+            eventParam.setRemark("测试信息");
             // 物流轨迹事件
-            eventParam.setTime(Instant.now());
+            eventParam.setTime(new Date());
             // 执行成功后无返回结果，不抛异常，即为正常执行
             getProviderApi().reportTrackingEvent(parcelNoParam, eventParam);
         } catch (ApiException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * 批量上报物流记录
+     *
+     * @date 2019/9/10 18:43
+     */
+    public static void reportTrackingEventList() throws ParseException, ApiException {
+        // 创建编号参数
+        ParcelNoParam parcelNoParam = new ParcelNoParam();
+        // 编号类型，默认是parcelNo
+        parcelNoParam.setType(ParcelNoType.ParcelNo);
+        // 设置编号
+        parcelNoParam.setValue("PX25dfa2500c03000");
+        List<ApiRequest> apiRequestList = new ArrayList<ApiRequest>();
+        for (int i = 0; i < 5; i++) {
+            TrackingEventParam track = getTrack(TrackingCode.COLLECT);
+            ApiRequest apiRequest = new ApiRequest("reportTrackingEvent", parcelNoParam, track);
+            apiRequestList.add(apiRequest);
+        }
+        ApiBatchResponse batchResponse = getProviderApi().batch(apiRequestList);
+        List<ApiResponse> apiResponseList = batchResponse.getApiResponseList();
+        // 如果不为空，则有错误信息
+        if (!apiResponseList.isEmpty()) {
+            // 处理错误信息
+            apiResponseList.toString();
         }
     }
 
@@ -206,15 +243,15 @@ public class ProviderOperate {
             // 编号类型，默认是parcelNo
             parcelNoParam.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            parcelNoParam.setValue("PX244284668003000");
+            parcelNoParam.setValue("PX25dfa2500c03000");
             // 创建服务完成参数
             ServiceCompleteInfoParam serviceComplete = new ServiceCompleteInfoParam();
             // 服务完成消息
-            serviceComplete.setMessage("服务已完成");
+            serviceComplete.setMessage("服务已完成,已由本人签收");
             // 服务完成位置
             serviceComplete.setLocation("上海B港口");
             // 服务完成时间
-            serviceComplete.setTime(Instant.now());
+            serviceComplete.setTime(new Date());
             // 执行成功后无返回结果，不抛异常，即为正常执行
             getProviderApi().reportServiceComplete(parcelNoParam, serviceComplete);
         } catch (ApiException e) {
@@ -244,7 +281,7 @@ public class ProviderOperate {
             // 异常位置
             exceptionParam.setLocation("上海B港口1号位");
             // 异常上报时间
-            exceptionParam.setTime(Instant.now());
+            exceptionParam.setTime(new Date());
             // 执行成功后无返回结果，不抛异常，即为正常执行
             getProviderApi().reportException(parcelNoParam, exceptionParam);
         } catch (ApiException e) {
@@ -264,23 +301,34 @@ public class ProviderOperate {
             // 编号类型，默认是parcelNo
             parcelNoParam.setType(ParcelNoType.ParcelNo);
             // 设置编号
-            parcelNoParam.setValue("PX244284668003000");
+            parcelNoParam.setValue("PX21d9333f0003000");
             // 创建面单参数
             ParcelLabelParam labelParam = new ParcelLabelParam();
             // 面单打印纸类型：1 特殊纸张(10*15厘米）、2 A4纸张(21*29.7厘米)、3 国内面单(18*10厘米)4 标签纸 (10*10厘米)、5 标签纸(8.05*9厘米)。目前仅支持4 (10*10厘米)，如有其他需要请与我们联系
             labelParam.setLabelType("4");
             // 生成面单的格式: PDF文件、JPG文件。默认PDF文件
-            labelParam.setLabelFormat("PDF");
+            labelParam.setLabelFormat("JSON");
             // 生成面单文件的Base64的编码
-            labelParam.setLabelContent("A1S3TV5...");
+            labelParam.setLabelContent("{\"parcel_no\":\"PX21d9333f0003000\",\"order_no\":\"66666666\",\"tracking_no\":\"11112222\",\"reference_no\":\"234-11-2234-28\",\"provider\":{\"name\":\"圆通\",\"id\":\"px11223344\"},\"sender\":{\"country\":\"CN\",\"region_l1\":\"江苏省\",\"region_l2\":\"南京市\",\"address\":\"xxx街yyy号2单元1103\",\"postcode\":\"200012\",\"company_name\":\"sender company\",\"name\":\"frist last\",\"phone\":\"13422223333\",\"email\":\"xx@abc.com\"},\"recipient\":{\"country\":\"CN\",\"region_l1\":\"江苏省\",\"region_l2\":\"南京市\",\"address\":\"xxx街yyy号2单元1103\",\"postcode\":\"200012\",\"company_name\":\"sender company\",\"name\":\"frist last\",\"phone\":\"13422223333\",\"email\":\"xx@abc.com\"}}");
             // 包裹的国际快递单号
-            labelParam.setTrackingNo("T10000000001");
+            labelParam.setTrackingNo("T10000000004");
             // 执行成功后无返回结果，不抛异常，即为正常执行
             getProviderApi().reportLabel(parcelNoParam, labelParam);
         } catch (ApiException e) {
             e.printStackTrace();
         }
 
+    }
+
+    private static TrackingEventParam getTrack(TrackingCode code) throws ParseException {
+        TrackingEventParam trackingEventParam = new TrackingEventParam();
+        trackingEventParam.setRemark("测试数据");
+        trackingEventParam.setLocation("上海");
+        trackingEventParam.setMessage("上海市黄浦区南苏州路1295号");
+        trackingEventParam.setCode(code);
+        trackingEventParam.setRemark("上海市黄浦区南苏州路1295号");
+        trackingEventParam.setTime(new Date());
+        return trackingEventParam;
     }
 
     private static ProviderApi getProviderApi() {
