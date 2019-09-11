@@ -39,7 +39,7 @@ public class OnlineStoreOperate {
         // 6.电商确认服务完成
         //confirmServiceComplete();
         // 7.批量上传包裹
-        //createParcelList();
+        createParcelList();
     }
 
     /**
@@ -169,12 +169,17 @@ public class OnlineStoreOperate {
     }
 
     public static void createParcelList() throws ApiException {
+        // 第一个包裹参数
+        CreateParcelParam parcelParam1 = getCreateParcelParam("T30000000001");
+        // 第二个包裹参数
+        CreateParcelParam parcelParam2 = getCreateParcelParam("T30000000002");
+        // 批量请求参数
         List<ApiRequest> apiRequestList = new ArrayList<ApiRequest>();
-        for (int i = 0; i < 10; i++) {
-            CreateParcelParam param = getCreateParcelParam("T2000000000" + i);
-            ApiRequest createParcel = new ApiRequest("createParcel", param, true);
-            apiRequestList.add(createParcel);
-        }
+        ApiRequest apiRequest1 = new ApiRequest("createParcel", parcelParam1, true);
+        ApiRequest apiRequest2 = new ApiRequest("createParcel", parcelParam2, true);
+        apiRequestList.add(apiRequest1);
+        apiRequestList.add(apiRequest2);
+        // 发起批量请求
         ApiBatchResponse apiBatchResponse = getECommerceApi().batch(apiRequestList);
         List<ApiResponse> apiResponseList = apiBatchResponse.getApiResponseList();
         for (ApiResponse response : apiResponseList) {
@@ -186,10 +191,7 @@ public class OnlineStoreOperate {
             } else {
                 // 没有错误，处理正常返回
                 CreateOrderResult result = response.getResult(CreateOrderResult.class);
-                System.out.println("圆通单号：" + result.getTrackingNo());
-                System.out.println("圆通三段码：" + result.getReferenceNo());
-                System.out.println("圆通订单号：" + result.getOnlineOrderNo());
-                System.out.println("ParcelX单号：" + result.getParcelNo());
+                JsonConverterUtil.getJsonString(result);
             }
         }
     }
