@@ -215,13 +215,31 @@ public class ProviderOperate {
         // 编号类型，默认是parcelNo
         parcelNoParam.setType(ParcelNoType.ParcelNo);
         // 设置编号
-        parcelNoParam.setValue("PX25dfa2500c03000");
+        parcelNoParam.setValue("PX280b74f33003000");
+
+        // 第一条track
+        TrackingEventParam track1 = new TrackingEventParam();
+        track1.setRemark("测试数据");
+        track1.setLocation("韩国首尔");
+        track1.setMessage("韩国01海外仓已拣货");
+        track1.setCode(TrackingCode.COLLECT);
+        track1.setRemark("韩国01海外仓已拣货");
+
+        // 第二条track
+        TrackingEventParam track2 = new TrackingEventParam();
+        track2.setRemark("测试数据");
+        track2.setLocation("韩国首尔");
+        track2.setMessage("韩国01海外仓已发货");
+        track2.setCode(TrackingCode.SHIPPED);
+        track2.setRemark("韩国01海外仓已发货");
+        track2.setTime(new Date());
+        // 批量请求参数
         List<ApiRequest> apiRequestList = new ArrayList<ApiRequest>();
-        for (int i = 0; i < 5; i++) {
-            TrackingEventParam track = getTrack(TrackingCode.COLLECT);
-            ApiRequest apiRequest = new ApiRequest("reportTrackingEvent", parcelNoParam, track);
-            apiRequestList.add(apiRequest);
-        }
+        ApiRequest apiRequest1 = new ApiRequest("reportTrackingEvent", parcelNoParam, track1);
+        ApiRequest apiRequest2 = new ApiRequest("reportTrackingEvent", parcelNoParam, track2);
+        apiRequestList.add(apiRequest1);
+        apiRequestList.add(apiRequest2);
+        // 发起请求
         ApiBatchResponse batchResponse = getProviderApi().batch(apiRequestList);
         List<ApiResponse> apiResponseList = batchResponse.getApiResponseList();
         // 如果不为空，则有错误信息
@@ -318,17 +336,6 @@ public class ProviderOperate {
             e.printStackTrace();
         }
 
-    }
-
-    private static TrackingEventParam getTrack(TrackingCode code) throws ParseException {
-        TrackingEventParam trackingEventParam = new TrackingEventParam();
-        trackingEventParam.setRemark("测试数据");
-        trackingEventParam.setLocation("上海");
-        trackingEventParam.setMessage("上海市黄浦区南苏州路1295号");
-        trackingEventParam.setCode(code);
-        trackingEventParam.setRemark("上海市黄浦区南苏州路1295号");
-        trackingEventParam.setTime(new Date());
-        return trackingEventParam;
     }
 
     private static ProviderApi getProviderApi() {
